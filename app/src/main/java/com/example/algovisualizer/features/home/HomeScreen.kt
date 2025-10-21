@@ -1,6 +1,5 @@
 package com.example.algovisualizer.features.home
 
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -56,17 +55,17 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryCard(
     category: FeatureCategory,
     onClick: () -> Unit
 ) {
-    Card(
+    ElevatedCard(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            .height(100.dp)
     ) {
         Box(
             modifier = Modifier
@@ -90,9 +89,6 @@ fun CategoryCard(
     }
 }
 
-/**
- * Extension property for user-friendly category names
- */
 val FeatureCategory.displayName: String
     get() = when (this) {
         FeatureCategory.DATA_STRUCTURES -> "Data Structures"
