@@ -24,6 +24,12 @@ object FeatureRegistry {
             name = "Heaps",
             parentCategory = FeatureCategory.DATA_STRUCTURES,
             description = "Tree-based data structure"
+        ),
+        SubCategory(
+            id = "graphs",
+            name = "Graphs",
+            parentCategory = FeatureCategory.DATA_STRUCTURES,
+            description = "Nodes and edges"
         )
     )
 
@@ -88,6 +94,24 @@ object FeatureRegistry {
             subCategory = "heaps",
             description = "Largest element is at the root",
             route = Screen.MaxHeap.route
+        ),
+
+        // GRAPHS
+        FeatureInfo(
+            id = "bfs",
+            name = "Breadth-First Search",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "graphs",
+            description = "Level-by-level traversal",
+            route = Screen.Bfs.route
+        ),
+        FeatureInfo(
+            id = "dfs",
+            name = "Depth-First Search",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "graphs",
+            description = "Go deep, then backtrack",
+            route = Screen.Dfs.route
         ),
     )
 

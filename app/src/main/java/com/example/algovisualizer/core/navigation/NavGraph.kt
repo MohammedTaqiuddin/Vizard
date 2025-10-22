@@ -19,6 +19,8 @@ import com.example.algovisualizer.features.avl.AvlScreen
 import com.example.algovisualizer.features.bst.BstScreen
 import com.example.algovisualizer.features.category.CategoryScreen
 import com.example.algovisualizer.features.doublylinkedlist.DoublyLinkedListScreen
+import com.example.algovisualizer.features.graph.GraphScreen
+import com.example.algovisualizer.features.graph.TraversalAlgorithm
 import com.example.algovisualizer.features.heap.HeapScreen
 import com.example.algovisualizer.features.heap.HeapType
 import com.example.algovisualizer.features.heap.HeapViewModel
@@ -142,6 +144,20 @@ fun NavGraph(
             val viewModel: HeapViewModel = viewModel(factory = factory)
             HeapScreen(
                 viewModel = viewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Bfs.route) {
+            GraphScreen(
+                algorithm = TraversalAlgorithm.BFS,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Dfs.route) {
+            GraphScreen(
+                algorithm = TraversalAlgorithm.DFS,
                 onBackClick = { navController.popBackStack() }
             )
         }
