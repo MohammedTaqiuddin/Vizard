@@ -18,6 +18,12 @@ object FeatureRegistry {
             name = "Trees",
             parentCategory = FeatureCategory.DATA_STRUCTURES,
             description = "Hierarchical data structures"
+        ),
+        SubCategory(
+            id = "heaps",
+            name = "Heaps",
+            parentCategory = FeatureCategory.DATA_STRUCTURES,
+            description = "Tree-based data structure"
         )
     )
 
@@ -64,7 +70,25 @@ object FeatureRegistry {
             subCategory = "trees",
             description = "Self-balancing BST",
             route = Screen.AvlTree.route
-        )
+        ),
+
+        // HEAPS
+        FeatureInfo(
+            id = "min_heap",
+            name = "Min Heap",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "heaps",
+            description = "Smallest element is at the root",
+            route = Screen.MinHeap.route
+        ),
+        FeatureInfo(
+            id = "max_heap",
+            name = "Max Heap",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "heaps",
+            description = "Largest element is at the root",
+            route = Screen.MaxHeap.route
+        ),
     )
 
     fun getAllFeatures(): List<FeatureInfo> = features
