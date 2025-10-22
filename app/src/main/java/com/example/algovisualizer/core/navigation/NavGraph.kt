@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -16,13 +17,19 @@ import androidx.navigation.navArgument
 import com.example.algovisualizer.core.data.FeatureCategory
 import com.example.algovisualizer.features.avl.AvlScreen
 import com.example.algovisualizer.features.bst.BstScreen
-import com.example.algovisualizer.features.singlylinkedlist.LinkedListScreen
-import com.example.algovisualizer.features.singlylinkedlist.LinkedListViewModel
 import com.example.algovisualizer.features.category.CategoryScreen
 import com.example.algovisualizer.features.doublylinkedlist.DoublyLinkedListScreen
-import com.example.algovisualizer.features.subcategory.SubCategoryScreen
+import com.example.algovisualizer.features.graph.GraphScreen
+import com.example.algovisualizer.features.graph.TraversalAlgorithm
+import com.example.algovisualizer.features.heap.HeapScreen
+import com.example.algovisualizer.features.heap.HeapType
+import com.example.algovisualizer.features.heap.HeapViewModel
+import com.example.algovisualizer.features.heap.HeapViewModelFactory
 import com.example.algovisualizer.features.home.HomeScreen
+import com.example.algovisualizer.features.singlylinkedlist.LinkedListScreen
+import com.example.algovisualizer.features.subcategory.SubCategoryScreen
 import com.example.algovisualizer.features.welcome.WelcomeScreen
+
 @Composable
 fun NavGraph(
     navController: NavHostController,
@@ -67,7 +74,7 @@ fun NavGraph(
 
             CategoryScreen(
                 category = category,
-                onSubCategoryClick = { subCategory ->  // ← FIXED: Changed from onFeatureClick
+                onSubCategoryClick = { subCategory ->
                     navController.navigate(Screen.SubCategory.createRoute(subCategory.id))
                 },
                 onBackClick = {
@@ -76,7 +83,6 @@ fun NavGraph(
             )
         }
 
-        // SubCategory Screen
         composable(
             route = Screen.SubCategory.route,
             arguments = listOf(
@@ -96,28 +102,26 @@ fun NavGraph(
             )
         }
 
-        // BST Screen
-        composable(Screen.BinarySearchTree.route) {
-            BstScreen(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-
-        // Singly Linked List
         composable(Screen.SinglyLinkedList.route) {
             LinkedListScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
 
-        // Placeholders for other features
         composable(Screen.DoublyLinkedList.route) {
             DoublyLinkedListScreen(
-                onBackClick = { navController.popBackStack() })
+                onBackClick = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.CircularLinkedList.route) {
-            PlaceholderScreen("Circular Linked List", navController::popBackStack)
+            PlaceholderScreen("Circular Linked List", onBackClick = { navController.popBackStack() })
+        }
+
+        composable(Screen.BinarySearchTree.route) {
+            BstScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.AvlTree.route) {
@@ -126,48 +130,68 @@ fun NavGraph(
             )
         }
 
-        composable(Screen.Heap.route) {
-            PlaceholderScreen("Doubly Linked List", navController::popBackStack)
+        composable(Screen.MinHeap.route) {
+            val factory = HeapViewModelFactory(HeapType.MIN)
+            val viewModel: HeapViewModel = viewModel(factory = factory)
+            HeapScreen(
+                viewModel = viewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.MaxHeap.route) {
+            val factory = HeapViewModelFactory(HeapType.MAX)
+            val viewModel: HeapViewModel = viewModel(factory = factory)
+            HeapScreen(
+                viewModel = viewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Bfs.route) {
+            GraphScreen(
+                algorithm = TraversalAlgorithm.BFS,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Dfs.route) {
+            GraphScreen(
+                algorithm = TraversalAlgorithm.DFS,
+                onBackClick = { navController.popBackStack() }
+            )
         }
     }
 }
 
-// Placeholder screen for unimplemented features
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaceholderScreen(
     title: String,
     onBackClick: () -> Unit
 ) {
-    androidx.compose.material3.Scaffold(
+    Scaffold(
         topBar = {
-            androidx.compose.material3.TopAppBar(
-                title = { androidx.compose.material3.Text(title) },
+            TopAppBar(
+                title = { Text(title) },
                 navigationIcon = {
-                    androidx.compose.material3.IconButton(onClick = onBackClick) {
-                        androidx.compose.material3.Icon(
-                            androidx.compose.material.icons.Icons.Default.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                },
-                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
-                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                }
             )
         }
     ) { padding ->
-        androidx.compose.foundation.layout.Box(
-            modifier = androidx.compose.ui.Modifier
+        Box(
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentAlignment = androidx.compose.ui.Alignment.Center
+            contentAlignment = Alignment.Center
         ) {
-            androidx.compose.material3.Text(
+            Text(
                 text = "$title\nComing Soon!",
-                style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center
             )
         }
     }

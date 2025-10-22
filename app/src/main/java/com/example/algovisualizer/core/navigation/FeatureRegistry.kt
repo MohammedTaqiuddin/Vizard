@@ -18,6 +18,18 @@ object FeatureRegistry {
             name = "Trees",
             parentCategory = FeatureCategory.DATA_STRUCTURES,
             description = "Hierarchical data structures"
+        ),
+        SubCategory(
+            id = "heaps",
+            name = "Heaps",
+            parentCategory = FeatureCategory.DATA_STRUCTURES,
+            description = "Tree-based data structure"
+        ),
+        SubCategory(
+            id = "graphs",
+            name = "Graphs",
+            parentCategory = FeatureCategory.DATA_STRUCTURES,
+            description = "Nodes and edges"
         )
     )
 
@@ -64,7 +76,43 @@ object FeatureRegistry {
             subCategory = "trees",
             description = "Self-balancing BST",
             route = Screen.AvlTree.route
-        )
+        ),
+
+        // HEAPS
+        FeatureInfo(
+            id = "min_heap",
+            name = "Min Heap",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "heaps",
+            description = "Smallest element is at the root",
+            route = Screen.MinHeap.route
+        ),
+        FeatureInfo(
+            id = "max_heap",
+            name = "Max Heap",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "heaps",
+            description = "Largest element is at the root",
+            route = Screen.MaxHeap.route
+        ),
+
+        // GRAPHS
+        FeatureInfo(
+            id = "bfs",
+            name = "Breadth-First Search",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "graphs",
+            description = "Level-by-level traversal",
+            route = Screen.Bfs.route
+        ),
+        FeatureInfo(
+            id = "dfs",
+            name = "Depth-First Search",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "graphs",
+            description = "Go deep, then backtrack",
+            route = Screen.Dfs.route
+        ),
     )
 
     fun getAllFeatures(): List<FeatureInfo> = features

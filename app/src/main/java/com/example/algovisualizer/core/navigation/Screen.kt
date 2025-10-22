@@ -27,6 +27,10 @@ sealed class Screen(val route: String) {
     object BubbleSort : Screen("bubble_sort")
     object QuickSort : Screen("quick_sort")
 
+    // Graphs
+    object Bfs : Screen("bfs")
+    object Dfs : Screen("dfs")
+
     // Legacy - keep for backward compatibility
     object LinkedList : Screen("linked_list")
     object Heap : Screen("heap")
