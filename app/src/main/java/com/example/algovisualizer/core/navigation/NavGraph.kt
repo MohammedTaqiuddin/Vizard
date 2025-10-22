@@ -14,10 +14,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.algovisualizer.core.data.FeatureCategory
+import com.example.algovisualizer.features.avl.AvlScreen
 import com.example.algovisualizer.features.bst.BstScreen
 import com.example.algovisualizer.features.singlylinkedlist.LinkedListScreen
 import com.example.algovisualizer.features.singlylinkedlist.LinkedListViewModel
 import com.example.algovisualizer.features.category.CategoryScreen
+import com.example.algovisualizer.features.doublylinkedlist.DoublyLinkedListScreen
 import com.example.algovisualizer.features.subcategory.SubCategoryScreen
 import com.example.algovisualizer.features.home.HomeScreen
 import com.example.algovisualizer.features.welcome.WelcomeScreen
@@ -110,7 +112,8 @@ fun NavGraph(
 
         // Placeholders for other features
         composable(Screen.DoublyLinkedList.route) {
-            PlaceholderScreen("Doubly Linked List", navController::popBackStack)
+            DoublyLinkedListScreen(
+                onBackClick = { navController.popBackStack() })
         }
 
         composable(Screen.CircularLinkedList.route) {
@@ -118,7 +121,13 @@ fun NavGraph(
         }
 
         composable(Screen.AvlTree.route) {
-            PlaceholderScreen("AVL Tree", navController::popBackStack)
+            AvlScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Heap.route) {
+            PlaceholderScreen("Doubly Linked List", navController::popBackStack)
         }
     }
 }
