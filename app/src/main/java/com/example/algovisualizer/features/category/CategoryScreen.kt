@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.algovisualizer.core.data.FeatureCategory
-import com.example.algovisualizer.core.data.FeatureInfo
+import com.example.algovisualizer.core.data.SubCategory
 import com.example.algovisualizer.core.navigation.FeatureRegistry
 import com.example.algovisualizer.features.home.displayName
 
@@ -19,10 +19,12 @@ import com.example.algovisualizer.features.home.displayName
 @Composable
 fun CategoryScreen(
     category: FeatureCategory,
-    onFeatureClick: (FeatureInfo) -> Unit,
+    onSubCategoryClick: (SubCategory) -> Unit,
     onBackClick: () -> Unit
 ) {
-    val features = FeatureRegistry.getFeaturesByCategory(category)
+    val subCategories = FeatureRegistry.getSubCategoriesByCategory(category)
+    val featuresWithoutSubCategory = FeatureRegistry.getFeaturesByCategory(category)
+        .filter { it.subCategory == null }
 
     Scaffold(
         topBar = {
@@ -47,7 +49,7 @@ fun CategoryScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Select a visualization",
+                text = "Select a subcategory",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -55,11 +57,24 @@ fun CategoryScreen(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(features) { feature ->
-                    FeatureCard(
-                        feature = feature,
-                        onClick = { onFeatureClick(feature) }
+                // Show subcategories
+                items(subCategories) { subCategory ->
+                    SubCategoryCard(
+                        subCategory = subCategory,
+                        onClick = { onSubCategoryClick(subCategory) }
                     )
+                }
+
+                // Show features without subcategory (like sorting algorithms)
+                if (featuresWithoutSubCategory.isNotEmpty()) {
+                    item {
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        Text(
+                            text = "Direct Features",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
                 }
             }
         }
@@ -68,8 +83,8 @@ fun CategoryScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeatureCard(
-    feature: FeatureInfo,
+fun SubCategoryCard(
+    subCategory: SubCategory,
     onClick: () -> Unit
 ) {
     ElevatedCard(
@@ -85,13 +100,13 @@ fun FeatureCard(
         ) {
             Column {
                 Text(
-                    text = feature.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    text = subCategory.name,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = feature.description,
+                    text = subCategory.description,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

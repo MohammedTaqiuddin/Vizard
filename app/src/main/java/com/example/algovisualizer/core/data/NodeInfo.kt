@@ -8,10 +8,20 @@ data class NodeInfo(
     val metadata: Map<String, Any> = emptyMap()
 )
 
+// Subcategory data class
+data class SubCategory(
+    val id: String,
+    val name: String,
+    val parentCategory: FeatureCategory,
+    val description: String
+)
+
+// Feature Info with subcategory support
 data class FeatureInfo(
     val id: String,
     val name: String,
     val category: FeatureCategory,
+    val subCategory: String?,  // Optional subcategory ID
     val description: String,
     val iconRes: Int? = null,
     val route: String
