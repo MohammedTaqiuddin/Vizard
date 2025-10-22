@@ -56,12 +56,15 @@ android {
 }
 
 dependencies {
+    // AndroidX Core and Lifecycle
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
 
-    // Compose BOM - This should be declared before the other Compose dependencies.
-    implementation(platform("androidx.compose:compose-bom:2024.10.01"))
+    // Compose BOM - Use the latest version consistently
+    // We will stick with 2024.10.01 which is the one you listed first
+    val composeBomVersion = "2024.10.01"
+    implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
 
     // A single, clean list of Compose dependencies. Versions are managed by the BOM.
     implementation("androidx.compose.ui:ui")
@@ -70,6 +73,10 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.runtime:runtime")
+
+    // Crucially, the animation dependency, listed only once
+    implementation("androidx.compose.animation:animation")
 
     // Other app dependencies
     implementation("androidx.navigation:navigation-compose:2.7.6")
@@ -82,7 +89,9 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.01"))
+
+    // Use the same BOM version for androidTest
+    androidTestImplementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
     // Debug dependencies

@@ -1,24 +1,53 @@
 package com.example.algovisualizer.features.avl
 
+import android.graphics.Paint
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import android.graphics.Paint
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable // <-- ADDED THIS IMPORT
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -213,6 +242,54 @@ fun AvlCanvas(
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
 
+    // State to hold the dynamic color map for animation
+    val animatedNodeColors = remember { mutableStateMapOf<Int, Color>() }
+
+    // Calculate node coordinates once
+    val nodeCoordinates = remember(rootNode, inOrderNodes) {
+        val coords = mutableMapOf<Int, NodeCoordinates>()
+        rootNode?.let { root ->
+            val depths = mutableMapOf<Int, Int>()
+            calculateDepths(root, 0, depths)
+
+            val nodeWidth = 200f
+            val ySpacing = 250f
+
+            inOrderNodes.forEachIndexed { index, node ->
+                val x = (index + 1) * nodeWidth
+                val y = (depths[node.value]!! + 1) * ySpacing
+                coords[node.value] = NodeCoordinates(x, y)
+            }
+        }
+        coords
+    }
+
+    // --- Node Color Animation Logic ---
+    // Update the target color for each node based on its state
+    inOrderNodes.forEach { node ->
+        // Get the target color based on the node's state
+        val targetColor = when (nodeStates[node.value]) {
+            NodeState.COMPARING -> Color(0xFFFFA500) // Orange
+            NodeState.FOUND -> Color.Green
+            NodeState.VISITED -> Color.Yellow
+            NodeState.NORMAL, null -> when (node.value) {
+                rootNode?.value -> Color.Red // Root is Red
+                else -> Color(0xFF4A90E2) // Default Node Color (Blue)
+            }
+        }
+
+        // Animate the color transition
+        val animatedColor by animateColorAsState(
+            targetValue = targetColor,
+            animationSpec = spring(stiffness = 50f), // Slower, smoother animation
+            label = "NodeColorAnimation-${node.value}"
+        )
+
+        // Store the animated color for use in the Canvas
+        animatedNodeColors[node.value] = animatedColor
+    }
+    // -----------------------------------
+
     Canvas(
         modifier = modifier
             .fillMaxSize()
@@ -232,20 +309,12 @@ fun AvlCanvas(
     ) {
         rootNode?.let { root ->
             if (inOrderNodes.isNotEmpty()) {
-                val nodeCoordinates = mutableMapOf<Int, NodeCoordinates>()
-                val depths = mutableMapOf<Int, Int>()
-                calculateDepths(root, 0, depths)
-
-                val nodeWidth = 200f
-                val ySpacing = 250f
-
-                inOrderNodes.forEachIndexed { index, node ->
-                    val x = (index + 1) * nodeWidth
-                    val y = (depths[node.value]!! + 1) * ySpacing
-                    nodeCoordinates[node.value] = NodeCoordinates(x, y)
-                }
-
-                drawAvlTree(root, nodeCoordinates, nodeStates, Color.Red, isRoot = true)
+                // Pass the map of *animated* colors to the drawing function
+                drawAvlTree(
+                    node = root,
+                    coords = nodeCoordinates,
+                    animatedColors = animatedNodeColors
+                )
             }
         }
     }
@@ -258,28 +327,26 @@ private fun calculateDepths(node: AvlNode?, level: Int, depths: MutableMap<Int, 
     calculateDepths(node.right, level + 1, depths)
 }
 
+// MODIFIED: Simplified signature to use animatedColors map
 private fun DrawScope.drawAvlTree(
     node: AvlNode?,
     coords: Map<Int, NodeCoordinates>,
-    nodeStates: Map<Int, NodeState>,
-    color: Color,
-    isRoot: Boolean = false
+    animatedColors: Map<Int, Color>
 ) {
     if (node == null) return
 
     val (x, y) = coords[node.value] ?: return
 
-    val animationColor = when (nodeStates[node.value]) {
-        NodeState.COMPARING -> Color(0xFFFFA500) // Orange
-        NodeState.FOUND -> Color.Green
-        NodeState.VISITED -> Color.Yellow
-        else -> null
-    }
+    // Retrieve the animated color
+    val finalColor = animatedColors[node.value] ?: Color.Gray
 
-    val finalColor = animationColor ?: color
-    val textColor = if (isRoot) Color.White else getContrastingTextColor(finalColor)
+    // Node value and contrast color logic remains the same
+    val textColor = getContrastingTextColor(finalColor)
 
+    // --- Draw Node Circle ---
     drawCircle(color = finalColor, radius = 60f, center = Offset(x, y))
+
+    // --- Draw Node Value ---
     drawContext.canvas.nativeCanvas.drawText(
         node.value.toString(),
         x,
@@ -291,31 +358,49 @@ private fun DrawScope.drawAvlTree(
         }
     )
 
-    val baseLeftColor = if (isRoot) Color(0xFF4A90E2) else color
-    val baseRightColor = if (isRoot) Color(0xFF50E3C2) else color
+    // --- Draw Balance Factor ---
+    val balanceFactor = node.balance
+    val balanceTextColor = when {
+        balanceFactor > 1 || balanceFactor < -1 -> Color.Red // Highlight imbalance
+        balanceFactor != 0 -> Color.Black
+        else -> Color.Gray
+    }
 
+    drawContext.canvas.nativeCanvas.drawText(
+        balanceFactor.toString(),
+        x + 80, // Position to the right of the node
+        y + 15, // Vertically aligned with the node value
+        Paint().apply {
+            this.color = balanceTextColor.toArgb()
+            textAlign = Paint.Align.LEFT
+            textSize = 30f // Slightly smaller text for the factor
+            isFakeBoldText = true // Make it stand out a bit
+        }
+    )
+
+    // --- Draw Lines and Recurse ---
     node.left?.let { leftChild ->
         val (childX, childY) = coords[leftChild.value] ?: return@let
-        val childColor = adjustColor(baseLeftColor, 1.2f)
         drawLine(
             Color.Black,
             start = Offset(x, y + 60),
             end = Offset(childX, childY - 60),
             strokeWidth = 5f
         )
-        drawAvlTree(leftChild, coords, nodeStates, childColor)
+        // Pass the animatedColors map down recursively
+        drawAvlTree(leftChild, coords, animatedColors)
     }
 
     node.right?.let { rightChild ->
         val (childX, childY) = coords[rightChild.value] ?: return@let
-        val childColor = adjustColor(baseRightColor, 0.8f)
         drawLine(
             Color.Black,
             start = Offset(x, y + 60),
             end = Offset(childX, childY - 60),
             strokeWidth = 5f
         )
-        drawAvlTree(rightChild, coords, nodeStates, childColor)
+        // Pass the animatedColors map down recursively
+        drawAvlTree(rightChild, coords, animatedColors)
     }
 }
 
@@ -324,12 +409,7 @@ private fun getContrastingTextColor(backgroundColor: Color): Color {
     return if (luminance > 0.5) Color.Black else Color.White
 }
 
-private fun adjustColor(color: Color, factor: Float): Color {
-    val red = (color.red * factor).coerceIn(0f, 1f)
-    val green = (color.green * factor).coerceIn(0f, 1f)
-    val blue = (color.blue * factor).coerceIn(0f, 1f)
-    return Color(red, green, blue, 1f)
-}
+// REMOVED: adjustColor and the old color logic is gone.
 
 @Composable
 fun CodePanel(

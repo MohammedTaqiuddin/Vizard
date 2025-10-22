@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.algovisualizer.core.data.OperationResult
 import com.example.algovisualizer.core.ui.BaseVisualizerViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,7 +19,8 @@ data class AvlNode(
     val value: Int,
     var left: AvlNode? = null,
     var right: AvlNode? = null,
-    var height: Int = 1
+    var height: Int = 1,
+    var balance: Int = 0 // Balance Factor
 )
 
 data class NodeCoordinates(val x: Float, val y: Float)
@@ -50,6 +52,9 @@ class AvlViewModel : BaseVisualizerViewModel() {
     val root: StateFlow<AvlNode?> = _root.asStateFlow()
 
     private var animationJob: Job? = null
+    // ADDED: Channel and Job for Queued Insertions
+    private val insertionQueue = Channel<Int>(Channel.UNLIMITED)
+    private var insertionProcessorJob: Job? = null
 
     private val _nodeStates = MutableStateFlow<Map<Int, NodeState>>(emptyMap())
     val nodeStates: StateFlow<Map<Int, NodeState>> = _nodeStates.asStateFlow()
@@ -60,7 +65,6 @@ class AvlViewModel : BaseVisualizerViewModel() {
     private val _traversalResult = MutableStateFlow("")
     val traversalResult: StateFlow<String> = _traversalResult.asStateFlow()
 
-    // NEW: StateFlow to hold the currently highlighted code lines
     private val _highlightedCodeLines = MutableStateFlow<Set<Int>>(emptySet())
     val highlightedCodeLines: StateFlow<Set<Int>> = _highlightedCodeLines.asStateFlow()
 
@@ -73,13 +77,24 @@ class AvlViewModel : BaseVisualizerViewModel() {
         generatePythonCode(treeRoot, traversal)
     }.stateIn(viewModelScope, SharingStarted.Lazily, getBasePythonCode())
 
+    // ADDED: Initialize the processor
+    init {
+        startInsertionProcessor()
+    }
+
+    // ADDED: Processor function to handle queued insertions
+    private fun startInsertionProcessor() {
+        insertionProcessorJob?.cancel()
+        insertionProcessorJob = viewModelScope.launch {
+            for (value in insertionQueue) {
+                insertWithAnimation(value)
+            }
+        }
+    }
+
     override suspend fun onOperation(operationName: String, vararg params: Any): OperationResult {
         return try {
             when (operationName) {
-                "insert" -> {
-                    val value = params[0] as Int
-                    insertWithAnimation(value)
-                }
                 "search" -> {
                     val value = params[0] as Int
                     searchWithAnimation(value)
@@ -91,6 +106,7 @@ class AvlViewModel : BaseVisualizerViewModel() {
                 "clear" -> {
                     clearTree()
                 }
+                // 'insert' operation is handled by the insertion queue, so we don't need logic here
             }
             OperationResult.Success(emptyList())
         } catch (e: Exception) {
@@ -98,9 +114,10 @@ class AvlViewModel : BaseVisualizerViewModel() {
         }
     }
 
+    // MODIFIED: Only sends value to the queue
     fun insertValue(value: Int) {
         viewModelScope.launch {
-            onOperation("insert", value)
+            insertionQueue.send(value)
         }
     }
 
@@ -116,12 +133,14 @@ class AvlViewModel : BaseVisualizerViewModel() {
         }
     }
 
+    // MODIFIED: Added cancellation of insertionProcessorJob
     fun clearTree() {
         animationJob?.cancel()
+        insertionProcessorJob?.cancel() // Clear insertion queue processing
         _root.value = null
         _nodeStates.value = emptyMap()
         _traversalResult.value = ""
-        _highlightedCodeLines.value = emptySet() // NEW: Clear highlights
+        _highlightedCodeLines.value = emptySet()
     }
 
     fun startTraversal(type: TraversalType) {
@@ -137,51 +156,49 @@ class AvlViewModel : BaseVisualizerViewModel() {
         animateTraversal(nodes)
     }
 
-    // MODIFIED: insertWithAnimation now updates highlighted code lines
-    private fun insertWithAnimation(value: Int) {
-        animationJob?.cancel()
-        animationJob = viewModelScope.launch {
-            _highlightedCodeLines.value = setOf(CodeLines.INSERT_DEF)
-            delay(500)
+    // MODIFIED: Changed to suspend function and removed inner Job logic
+    private suspend fun insertWithAnimation(value: Int) {
+        // animationJob?.cancel() is now handled by the insertion processor's nature
 
-            if (_root.value == null) {
-                _highlightedCodeLines.value = setOf(CodeLines.INSERT_ROOT_IS_NULL)
-                delay(700)
-                _root.value = AvlNode(value)
-                _nodeStates.value = mapOf(value to NodeState.FOUND)
-                _highlightedCodeLines.value = setOf(CodeLines.INSERT_RETURN_NEW_NODE)
-                delay(1000)
-                _nodeStates.value = emptyMap()
-                _highlightedCodeLines.value = emptySet()
-                return@launch
-            }
+        _highlightedCodeLines.value = setOf(CodeLines.INSERT_DEF)
+        delay(500)
 
-            var current = _root.value
-            while (current != null && current.value != value) {
-                setNodeState(current.value, NodeState.COMPARING)
-                _highlightedCodeLines.value = setOf(CodeLines.INSERT_CHECK_LESS)
-                delay(700)
-
-                // We need to keep the node state visually "comparing" while highlighting code
-                val nodeToUpdate = current
-                if (value < nodeToUpdate.value) {
-                    _highlightedCodeLines.value = setOf(CodeLines.INSERT_ELSE, CodeLines.INSERT_GO_LEFT)
-                    current = nodeToUpdate.left
-                } else {
-                    _highlightedCodeLines.value = setOf(CodeLines.INSERT_GO_RIGHT)
-                    current = nodeToUpdate.right
-                }
-                delay(700)
-                setNodeState(nodeToUpdate.value, NodeState.NORMAL)
-            }
-
-            _root.value = insertRec(_root.value, value)
+        if (_root.value == null) {
+            _highlightedCodeLines.value = setOf(CodeLines.INSERT_ROOT_IS_NULL)
+            delay(700)
+            _root.value = AvlNode(value)
             setNodeState(value, NodeState.FOUND)
-            _highlightedCodeLines.value = setOf(CodeLines.INSERT_RETURN_ROOT)
+            _highlightedCodeLines.value = setOf(CodeLines.INSERT_RETURN_NEW_NODE)
             delay(1000)
             _nodeStates.value = emptyMap()
             _highlightedCodeLines.value = emptySet()
+            return
         }
+
+        var current = _root.value
+        while (current != null && current.value != value) {
+            setNodeState(current.value, NodeState.COMPARING)
+            _highlightedCodeLines.value = setOf(CodeLines.INSERT_CHECK_LESS)
+            delay(700)
+
+            val nodeToUpdate = current
+            if (value < nodeToUpdate.value) {
+                _highlightedCodeLines.value = setOf(CodeLines.INSERT_ELSE, CodeLines.INSERT_GO_LEFT)
+                current = nodeToUpdate.left
+            } else {
+                _highlightedCodeLines.value = setOf(CodeLines.INSERT_GO_RIGHT)
+                current = nodeToUpdate.right
+            }
+            delay(700)
+            setNodeState(nodeToUpdate.value, NodeState.NORMAL)
+        }
+
+        _root.value = insertRec(_root.value, value)
+        setNodeState(value, NodeState.FOUND)
+        _highlightedCodeLines.value = setOf(CodeLines.INSERT_RETURN_ROOT)
+        delay(1000)
+        _nodeStates.value = emptyMap()
+        _highlightedCodeLines.value = emptySet()
     }
 
     private fun insertRec(current: AvlNode?, value: Int): AvlNode {
@@ -198,29 +215,29 @@ class AvlViewModel : BaseVisualizerViewModel() {
         }
 
         current.height = 1 + max(getHeight(current.left), getHeight(current.right))
-
+        current.balance = getBalance(current) // UPDATED
         val balance = getBalance(current)
 
-        // LL  // FIX: Added !! to assert non-null (guaranteed by AVL logic).
+        // LL
         if (balance > 1 && value < current.left!!.value) {
             _highlightedCodeLines.value = setOf(CodeLines.LL_ROTATE)
             return rightRotate(current)!!
         }
 
-        // RR  // FIX: Added !! to assert non-null (guaranteed by AVL logic).
+        // RR
         if (balance < -1 && value > current.right!!.value) {
             _highlightedCodeLines.value = setOf(CodeLines.RR_ROTATE)
             return leftRotate(current)!!
         }
 
-        // LR  // FIX: Added !! to assert non-null (guaranteed by AVL logic).
+        // LR
         if (balance > 1 && value > current.left!!.value) {
             _highlightedCodeLines.value = setOf(CodeLines.LR_ROTATE)
             current.left = leftRotate(current.left!!)!!
             return rightRotate(current)!!
         }
 
-        // RL  // FIX: Added !! to assert non-null (guaranteed by AVL logic).
+        // RL
         if (balance < -1 && value < current.right!!.value) {
             _highlightedCodeLines.value = setOf(CodeLines.RL_ROTATE)
             current.right = rightRotate(current.right!!)!!
@@ -239,6 +256,8 @@ class AvlViewModel : BaseVisualizerViewModel() {
 
         z.height = 1 + max(getHeight(z.left), getHeight(z.right))
         y.height = 1 + max(getHeight(y.left), getHeight(y.right))
+        z.balance = getBalance(z) // UPDATED
+        y.balance = getBalance(y) // UPDATED
 
         return y
     }
@@ -252,7 +271,8 @@ class AvlViewModel : BaseVisualizerViewModel() {
 
         z.height = 1 + max(getHeight(z.left), getHeight(z.right))
         y.height = 1 + max(getHeight(y.left), getHeight(y.right))
-
+        z.balance = getBalance(z) // UPDATED
+        y.balance = getBalance(y) // UPDATED
         return y
     }
 
@@ -322,6 +342,7 @@ class AvlViewModel : BaseVisualizerViewModel() {
                 return current.right
             }
             val smallestValue = findSmallestValue(current.right!!)
+            // Create a new node instance to prevent mutation issues with composable states
             val newNode = current.copy(value = smallestValue)
             newNode.right = deleteRec(current.right, smallestValue)
             return newNode
@@ -329,7 +350,7 @@ class AvlViewModel : BaseVisualizerViewModel() {
 
         if (current != null) {
             current.height = 1 + max(getHeight(current.left), getHeight(current.right))
-
+            current.balance = getBalance(current) // UPDATED
             val balance = getBalance(current)
 
             // LL
