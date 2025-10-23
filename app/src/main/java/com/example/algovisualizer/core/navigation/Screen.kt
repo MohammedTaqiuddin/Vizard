@@ -14,6 +14,7 @@ sealed class Screen(val route: String) {
     object SinglyLinkedList : Screen("singly_linked_list")
     object DoublyLinkedList : Screen("doubly_linked_list")
     object CircularLinkedList : Screen("circular_linked_list")
+    object Queue : Screen("queue")
 
     // Trees
     object BinarySearchTree : Screen("bst")
