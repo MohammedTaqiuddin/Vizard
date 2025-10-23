@@ -152,7 +152,7 @@ fun GraphController(
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { scope.launch { viewModel.onOperation("reset") } }, modifier = Modifier.weight(1f)) {
-                Text("Reset Colors")
+                Text("Reset")
             }
             Button(onClick = { scope.launch { viewModel.onOperation("clear") } }, modifier = Modifier.weight(1f)) {
                 Text("Clear Graph")
