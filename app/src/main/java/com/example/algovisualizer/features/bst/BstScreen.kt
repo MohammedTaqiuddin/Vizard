@@ -415,16 +415,17 @@ private fun DrawScope.drawBstTree(
 ) {
     if (node == null) return
 
-    val (x, y) = coords[node.value] ?: return
+    val nodeCenter = coords[node.value] ?: return
+    val radius = 60f
 
     val finalColor = animatedColors[node.value] ?: Color.Gray
     val textColor = getContrastingTextColor(finalColor)
 
-    drawCircle(color = finalColor, radius = 60f, center = Offset(x, y))
+    drawCircle(color = finalColor, radius = radius, center = nodeCenter)
     drawContext.canvas.nativeCanvas.drawText(
         node.value.toString(),
-        x,
-        y + 15,
+        nodeCenter.x,
+        nodeCenter.y + 15,
         Paint().apply {
             this.color = textColor.toArgb()
             textAlign = Paint.Align.CENTER
@@ -432,10 +433,17 @@ private fun DrawScope.drawBstTree(
         }
     )
 
-    node.left?.let { leftChild ->
-        val (childX, childY) = coords[leftChild.value] ?: return@let
-        val startOffset = Offset(x, y + 60)
-        val endOffset = Offset(childX, childY - 60)
+    fun drawBranch(childNode: BstNode) {
+        val childCenter = coords[childNode.value] ?: return
+
+        val vector = childCenter - nodeCenter
+        val distance = vector.getDistance()
+        if (distance == 0f) return
+
+        val direction = vector / distance
+        val startOffset = nodeCenter + direction * radius
+        val endOffset = childCenter - direction * radius
+
         // Outline
         drawLine(
             Color.Black,
@@ -444,7 +452,7 @@ private fun DrawScope.drawBstTree(
             strokeWidth = 8f
         )
         // Inner line
-        val childColor = animatedColors[leftChild.value] ?: Color.White
+        val childColor = animatedColors[childNode.value] ?: Color.White
         drawLine(
             brush = Brush.linearGradient(
                 colors = listOf(finalColor, childColor),
@@ -455,34 +463,11 @@ private fun DrawScope.drawBstTree(
             end = endOffset,
             strokeWidth = 5f
         )
-        drawBstTree(leftChild, coords, animatedColors)
+        drawBstTree(childNode, coords, animatedColors)
     }
 
-    node.right?.let { rightChild ->
-        val (childX, childY) = coords[rightChild.value] ?: return@let
-        val startOffset = Offset(x, y + 60)
-        val endOffset = Offset(childX, childY - 60)
-        // Outline
-        drawLine(
-            Color.Black,
-            start = startOffset,
-            end = endOffset,
-            strokeWidth = 8f
-        )
-        // Inner line
-        val childColor = animatedColors[rightChild.value] ?: Color.White
-        drawLine(
-            brush = Brush.linearGradient(
-                colors = listOf(finalColor, childColor),
-                start = startOffset,
-                end = endOffset
-            ),
-            start = startOffset,
-            end = endOffset,
-            strokeWidth = 5f
-        )
-        drawBstTree(rightChild, coords, animatedColors)
-    }
+    node.left?.let { drawBranch(it) }
+    node.right?.let { drawBranch(it) }
 }
 
 private fun getContrastingTextColor(backgroundColor: Color): Color {
