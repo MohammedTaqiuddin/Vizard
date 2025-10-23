@@ -26,6 +26,8 @@ import com.example.algovisualizer.features.heap.HeapType
 import com.example.algovisualizer.features.heap.HeapViewModel
 import com.example.algovisualizer.features.heap.HeapViewModelFactory
 import com.example.algovisualizer.features.home.HomeScreen
+import com.example.algovisualizer.features.queue.QueueScreen
+import com.example.algovisualizer.features.queue.QueueViewModel
 import com.example.algovisualizer.features.singlylinkedlist.LinkedListScreen
 import com.example.algovisualizer.features.subcategory.SubCategoryScreen
 import com.example.algovisualizer.features.welcome.WelcomeScreen
@@ -116,6 +118,14 @@ fun NavGraph(
 
         composable(Screen.CircularLinkedList.route) {
             PlaceholderScreen("Circular Linked List", onBackClick = { navController.popBackStack() })
+        }
+
+        composable(Screen.Queue.route) {
+            val viewModel: QueueViewModel = viewModel()
+            QueueScreen(
+                viewModel = viewModel,
+                onBackClick = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.BinarySearchTree.route) {
