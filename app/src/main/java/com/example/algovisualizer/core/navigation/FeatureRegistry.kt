@@ -67,6 +67,14 @@ object FeatureRegistry {
             description = "First-in, first-out data structure",
             route = Screen.Queue.route
         ),
+        FeatureInfo(
+            id = "stack",
+            name = "Stack",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "lists",
+            description = "Last-in, first-out data structure",
+            route = Screen.Stack.route
+        ),
 
         // TREES
         FeatureInfo(

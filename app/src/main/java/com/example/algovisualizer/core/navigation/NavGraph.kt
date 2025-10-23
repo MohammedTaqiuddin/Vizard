@@ -31,6 +31,7 @@ import com.example.algovisualizer.features.queue.QueueViewModel
 import com.example.algovisualizer.features.singlylinkedlist.LinkedListScreen
 import com.example.algovisualizer.features.subcategory.SubCategoryScreen
 import com.example.algovisualizer.features.welcome.WelcomeScreen
+import com.example.algovisualizer.features.stack.StackScreen
 
 @Composable
 fun NavGraph(
@@ -124,6 +125,12 @@ fun NavGraph(
             val viewModel: QueueViewModel = viewModel()
             QueueScreen(
                 viewModel = viewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.Stack.route) {
+            StackScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
