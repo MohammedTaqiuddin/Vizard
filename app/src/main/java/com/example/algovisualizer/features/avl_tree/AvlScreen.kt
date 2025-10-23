@@ -2,6 +2,9 @@ package com.example.algovisualizer.features.avl
 
 import android.graphics.Paint
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector2D
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -51,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
@@ -61,6 +65,21 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
+
+
+private fun Color.darker(factor: Float = 0.7f): Color {
+    return Color(red * factor, green * factor, blue * factor, alpha)
+}
+
+private fun Color.lighter(factor: Float = 1.4f): Color {
+    return Color(
+        (red * factor).coerceIn(0f, 1f),
+        (green * factor).coerceIn(0f, 1f),
+        (blue * factor).coerceIn(0f, 1f),
+        alpha
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -229,6 +248,17 @@ fun AvlScreen(
     }
 }
 
+private fun findParent(node: AvlNode?, value: Int, parent: AvlNode? = null): AvlNode? {
+    if (node == null) return null
+    if (node.value == value) return parent
+
+    return if (value < node.value) {
+        findParent(node.left, value, node)
+    } else {
+        findParent(node.right, value, node)
+    }
+}
+
 @Composable
 fun AvlCanvas(
     viewModel: AvlViewModel,
@@ -242,10 +272,9 @@ fun AvlCanvas(
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
 
-    // State to hold the dynamic color map for animation
     val animatedNodeColors = remember { mutableStateMapOf<Int, Color>() }
+    val animatedNodeOffsets = remember { mutableStateMapOf<Int, Animatable<Offset, AnimationVector2D>>() }
 
-    // Calculate node coordinates once
     val nodeCoordinates = remember(rootNode, inOrderNodes) {
         val coords = mutableMapOf<Int, NodeCoordinates>()
         rootNode?.let { root ->
@@ -264,31 +293,91 @@ fun AvlCanvas(
         coords
     }
 
-    // --- Node Color Animation Logic ---
-    // Update the target color for each node based on its state
-    inOrderNodes.forEach { node ->
-        // Get the target color based on the node's state
-        val targetColor = when (nodeStates[node.value]) {
-            NodeState.COMPARING -> Color(0xFFFFA500) // Orange
-            NodeState.FOUND -> Color.Green
-            NodeState.VISITED -> Color.Yellow
-            NodeState.NORMAL, null -> when (node.value) {
-                rootNode?.value -> Color.Red // Root is Red
-                else -> Color(0xFF4A90E2) // Default Node Color (Blue)
-            }
+    LaunchedEffect(nodeCoordinates) {
+        val currentRoot = rootNode
+        (animatedNodeOffsets.keys - nodeCoordinates.keys).forEach {
+            animatedNodeOffsets.remove(it)
         }
 
-        // Animate the color transition
+        nodeCoordinates.forEach { (value, targetCoords) ->
+            val targetOffset = Offset(targetCoords.x, targetCoords.y)
+
+            if (!animatedNodeOffsets.containsKey(value)) {
+                val parent = findParent(currentRoot, value)
+                val startOffset = if (parent != null) {
+                    animatedNodeOffsets[parent.value]?.value ?: nodeCoordinates[parent.value]?.let { Offset(it.x, it.y) } ?: targetOffset
+                } else {
+                    targetOffset
+                }
+                animatedNodeOffsets[value] = Animatable(startOffset, Offset.VectorConverter)
+            }
+
+            launch {
+                animatedNodeOffsets[value]?.animateTo(
+                    targetValue = targetOffset,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 100f)
+                )
+            }
+        }
+    }
+
+    val targetColors = remember(rootNode, nodeStates) {
+        val colors = mutableMapOf<Int, Color>()
+        val currentRoot = rootNode
+        if (currentRoot != null) {
+            val baseColors = mutableMapOf<Int, Color>()
+
+            fun assignBaseColors(node: AvlNode, parent: AvlNode?) {
+                val nodeColor = if (parent == null) {
+                    Color.Red // Root color
+                } else if (parent.value == currentRoot.value) {
+                    if (node.value < parent.value) {
+                        Color(0xFF4FC3F7) // Base blue for left subtree
+                    } else {
+                        Color(0xFF4DB6AC) // Base green for right subtree
+                    }
+                } else {
+                    val parentColor = baseColors[parent.value]!!
+                    if (node.value > parent.value) {
+                        parentColor.darker()
+                    } else {
+                        parentColor.lighter()
+                    }
+                }
+                baseColors[node.value] = nodeColor
+                node.left?.let { assignBaseColors(it, node) }
+                node.right?.let { assignBaseColors(it, node) }
+            }
+
+            assignBaseColors(currentRoot, null)
+
+            fun assignFinalColors(node: AvlNode) {
+                val state = nodeStates[node.value]
+                colors[node.value] = when (state) {
+                    NodeState.COMPARING -> Color(0xFFFFA500) // Orange
+                    NodeState.FOUND -> Color.Green
+                    NodeState.VISITED -> Color.Yellow
+                    else -> baseColors[node.value] ?: Color.Gray
+                }
+                node.left?.let { assignFinalColors(it) }
+                node.right?.let { assignFinalColors(it) }
+            }
+            assignFinalColors(currentRoot)
+        }
+        colors
+    }
+
+    inOrderNodes.forEach { node ->
+        val targetColor = targetColors[node.value] ?: Color.Gray
+
         val animatedColor by animateColorAsState(
             targetValue = targetColor,
-            animationSpec = spring(stiffness = 50f), // Slower, smoother animation
+            animationSpec = spring(stiffness = 50f),
             label = "NodeColorAnimation-${node.value}"
         )
-
-        // Store the animated color for use in the Canvas
         animatedNodeColors[node.value] = animatedColor
     }
-    // -----------------------------------
+
 
     Canvas(
         modifier = modifier
@@ -309,10 +398,10 @@ fun AvlCanvas(
     ) {
         rootNode?.let { root ->
             if (inOrderNodes.isNotEmpty()) {
-                // Pass the map of *animated* colors to the drawing function
+                val currentCoords = animatedNodeOffsets.mapValues { it.value.value }
                 drawAvlTree(
                     node = root,
-                    coords = nodeCoordinates,
+                    coords = currentCoords,
                     animatedColors = animatedNodeColors
                 )
             }
@@ -327,30 +416,27 @@ private fun calculateDepths(node: AvlNode?, level: Int, depths: MutableMap<Int, 
     calculateDepths(node.right, level + 1, depths)
 }
 
-// MODIFIED: Simplified signature to use animatedColors map
 private fun DrawScope.drawAvlTree(
     node: AvlNode?,
-    coords: Map<Int, NodeCoordinates>,
+    coords: Map<Int, Offset>,
     animatedColors: Map<Int, Color>
 ) {
     if (node == null) return
 
-    val (x, y) = coords[node.value] ?: return
+    val nodeCenter = coords[node.value] ?: return
+    val radius = 60f
 
-    // Retrieve the animated color
     val finalColor = animatedColors[node.value] ?: Color.Gray
-
-    // Node value and contrast color logic remains the same
     val textColor = getContrastingTextColor(finalColor)
 
     // --- Draw Node Circle ---
-    drawCircle(color = finalColor, radius = 60f, center = Offset(x, y))
+    drawCircle(color = finalColor, radius = radius, center = nodeCenter)
 
     // --- Draw Node Value ---
     drawContext.canvas.nativeCanvas.drawText(
         node.value.toString(),
-        x,
-        y + 15,
+        nodeCenter.x,
+        nodeCenter.y + 15,
         Paint().apply {
             this.color = textColor.toArgb()
             textAlign = Paint.Align.CENTER
@@ -368,8 +454,8 @@ private fun DrawScope.drawAvlTree(
 
     drawContext.canvas.nativeCanvas.drawText(
         balanceFactor.toString(),
-        x + 80, // Position to the right of the node
-        y + 15, // Vertically aligned with the node value
+        nodeCenter.x + 80, // Position to the right of the node
+        nodeCenter.y + 15, // Vertically aligned with the node value
         Paint().apply {
             this.color = balanceTextColor.toArgb()
             textAlign = Paint.Align.LEFT
@@ -378,38 +464,47 @@ private fun DrawScope.drawAvlTree(
         }
     )
 
-    // --- Draw Lines and Recurse ---
-    node.left?.let { leftChild ->
-        val (childX, childY) = coords[leftChild.value] ?: return@let
+    fun drawBranch(childNode: AvlNode) {
+        val childCenter = coords[childNode.value] ?: return
+
+        val vector = childCenter - nodeCenter
+        val distance = vector.getDistance()
+        if (distance == 0f) return
+
+        val direction = vector / distance
+        val startOffset = nodeCenter + direction * radius
+        val endOffset = childCenter - direction * radius
+
+        // Outline
         drawLine(
             Color.Black,
-            start = Offset(x, y + 60),
-            end = Offset(childX, childY - 60),
+            start = startOffset,
+            end = endOffset,
+            strokeWidth = 8f
+        )
+        // Inner line
+        val childColor = animatedColors[childNode.value] ?: Color.White
+        drawLine(
+            brush = Brush.linearGradient(
+                colors = listOf(finalColor, childColor),
+                start = startOffset,
+                end = endOffset
+            ),
+            start = startOffset,
+            end = endOffset,
             strokeWidth = 5f
         )
-        // Pass the animatedColors map down recursively
-        drawAvlTree(leftChild, coords, animatedColors)
+        drawAvlTree(childNode, coords, animatedColors)
     }
 
-    node.right?.let { rightChild ->
-        val (childX, childY) = coords[rightChild.value] ?: return@let
-        drawLine(
-            Color.Black,
-            start = Offset(x, y + 60),
-            end = Offset(childX, childY - 60),
-            strokeWidth = 5f
-        )
-        // Pass the animatedColors map down recursively
-        drawAvlTree(rightChild, coords, animatedColors)
-    }
+    node.left?.let { drawBranch(it) }
+    node.right?.let { drawBranch(it) }
 }
 
 private fun getContrastingTextColor(backgroundColor: Color): Color {
     val luminance = (0.299 * backgroundColor.red + 0.587 * backgroundColor.green + 0.114 * backgroundColor.blue)
     return if (luminance > 0.5) Color.Black else Color.White
 }
-
-// REMOVED: adjustColor and the old color logic is gone.
 
 @Composable
 fun CodePanel(
@@ -429,7 +524,7 @@ fun CodePanel(
     LaunchedEffect(highlightedLines) {
         highlightedLines.firstOrNull()?.let { firstLine ->
             if (firstLine > 0) {
-                // Scroll to the item, adjusting for 0-based index and screen layout
+                // Scroll to the item, adjusting for 0-based
                 val targetIndex = (firstLine - 1).coerceAtLeast(0)
                 lazyListState.animateScrollToItem(index = targetIndex)
             }
