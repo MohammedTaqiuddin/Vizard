@@ -59,6 +59,14 @@ object FeatureRegistry {
             description = "Last node points back to first",
             route = Screen.CircularLinkedList.route
         ),
+        FeatureInfo(
+            id = "queue",
+            name = "Queue",
+            category = FeatureCategory.DATA_STRUCTURES,
+            subCategory = "lists",
+            description = "First-in, first-out data structure",
+            route = Screen.Queue.route
+        ),
 
         // TREES
         FeatureInfo(
