@@ -52,9 +52,6 @@ fun StackVisualizer(
                     exit = fadeOut(animationSpec = tween(500))
                 ) {
                     StackNode(
-                        modifier = Modifier.animateItemPlacement(
-                            animationSpec = tween(500)
-                        ),
                         value = node.value,
                         peeked = node.id == peekedNodeId,
                     )
