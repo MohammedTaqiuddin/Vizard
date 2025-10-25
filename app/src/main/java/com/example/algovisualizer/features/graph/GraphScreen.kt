@@ -1,5 +1,7 @@
 package com.example.algovisualizer.features.graph
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.Timeline
@@ -55,6 +60,16 @@ import kotlinx.coroutines.launch
 enum class TraversalAlgorithm { BFS, DFS }
 enum class InteractionMode { PAN_ZOOM, ADD_NODE, ADD_EDGE }
 
+private fun getNodeTargetColor(state: GraphNodeState?): Color {
+    return when (state) {
+        GraphNodeState.CURRENT -> Color(0xFFFFA500) // Orange
+        GraphNodeState.VISITED -> Color(0xFF4DB6AC)
+        GraphNodeState.IN_QUEUE -> Color(0xFF4FC3F7) // Light Blue
+        GraphNodeState.SELECTED -> Color(0xFFE91E63) // Pink/Red
+        GraphNodeState.PATH -> Color(0xFF9C27B0) // Purple
+        else -> Color(0xFF9E9E9E) // Gray
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GraphScreen(
@@ -115,12 +130,47 @@ fun GraphController(
 ) {
     val scope = rememberCoroutineScope()
     val currentMode by viewModel.interactionMode.collectAsState()
+    val traversalResult by viewModel.traversalResult.collectAsState()
+    val nodeStates by viewModel.nodeStates.collectAsState()
+    val lazyRowState = rememberLazyListState()
+
     var startNode by remember { mutableStateOf("A") }
+
+    LaunchedEffect(traversalResult) {
+        if (traversalResult.isNotEmpty()) {
+            lazyRowState.animateScrollToItem(traversalResult.size - 1)
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        if (traversalResult.isNotEmpty()) {
+            LazyRow(state = lazyRowState, verticalAlignment = Alignment.CenterVertically) {
+                items(traversalResult) { nodeId ->
+                    val nodeState = nodeStates[nodeId]
+                    val targetColor = getNodeTargetColor(nodeState)
+                    val animatedColor by animateColorAsState(targetColor, spring(stiffness = 150f))
+
+                    Text(
+                        text = nodeId,
+                        color = animatedColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                    if (traversalResult.last() != nodeId) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = "Right Arrow",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
         Text("Mode", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
             IconToggleButton(checked = currentMode == InteractionMode.PAN_ZOOM, onCheckedChange = { viewModel.setInteractionMode(InteractionMode.PAN_ZOOM) }) {

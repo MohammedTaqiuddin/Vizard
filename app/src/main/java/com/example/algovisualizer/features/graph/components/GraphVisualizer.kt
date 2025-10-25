@@ -1,5 +1,7 @@
 package com.example.algovisualizer.features.graph.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,7 +35,7 @@ import kotlin.math.sqrt
 @Composable
 fun GraphVisualizer(
     viewModel: GraphViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val nodes by viewModel.nodes.collectAsState()
     val edges by viewModel.edges.collectAsState()
@@ -52,6 +55,24 @@ fun GraphVisualizer(
 
     val nodeRadius = 24.dp
 
+    val animatedNodeColors = remember { mutableStateMapOf<String, Color>() }
+    nodes.values.forEach { node ->
+        val targetColor = when (nodeStates[node.id]) {
+            GraphNodeState.VISITED -> Color(0xFF4DB6AC)
+            GraphNodeState.IN_QUEUE -> Color(0xFF4FC3F7)
+            GraphNodeState.CURRENT -> Color(0xFFFFA500)
+            GraphNodeState.PATH -> Color.Green
+            GraphNodeState.SELECTED -> Color.Red // Highlight for selection
+            else -> Color.Blue
+        }
+        val animatedColor by animateColorAsState(
+            targetValue = targetColor,
+            animationSpec = spring(stiffness = 50f),
+            label = "NodeColorAnimation-${node.id}"
+        )
+        animatedNodeColors[node.id] = animatedColor
+    }
+
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -67,9 +88,13 @@ fun GraphVisualizer(
                                     InteractionMode.ADD_NODE -> {
                                         viewModel.onOperation("add_node", worldOffset)
                                     }
+
                                     InteractionMode.ADD_EDGE -> {
                                         val tappedNode = nodes.values.find {
-                                            val distance = sqrt((worldOffset.x - it.offset.x).pow(2) + (worldOffset.y - it.offset.y).pow(2))
+                                            val distance = sqrt(
+                                                (worldOffset.x - it.offset.x).pow(2) +
+                                                        (worldOffset.y - it.offset.y).pow(2)
+                                            )
                                             distance < nodeRadius.toPx()
                                         }
                                         if (tappedNode != null) {
@@ -79,6 +104,7 @@ fun GraphVisualizer(
                                             viewModel.onOperation("reset")
                                         }
                                     }
+
                                     else -> Unit
                                 }
                             }
@@ -86,7 +112,12 @@ fun GraphVisualizer(
                     )
                 }
                 .transformable(state = transformableState)
-                .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y)
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offset.x,
+                    translationY = offset.y
+                )
         ) {
             // 1. Draw edges
             edges.forEach { edge ->
@@ -104,10 +135,10 @@ fun GraphVisualizer(
 
             // 2. Draw nodes
             nodes.values.forEach { node ->
-                val nodeColor = when (nodeStates[node.id]) {
-                    GraphNodeState.VISITED -> Color.LightGray
-                    GraphNodeState.IN_QUEUE -> Color.Yellow
-                    GraphNodeState.CURRENT -> Color.Magenta
+                val nodeColor = animatedNodeColors[node.id] ?: when (nodeStates[node.id]) {
+                    GraphNodeState.VISITED -> Color(0xFF4DB6AC)
+                    GraphNodeState.IN_QUEUE -> Color(0xFF4FC3F7)
+                    GraphNodeState.CURRENT -> Color(0xFFFFA500)
                     GraphNodeState.PATH -> Color.Green
                     GraphNodeState.SELECTED -> Color.Red // Highlight for selection
                     else -> Color.Blue

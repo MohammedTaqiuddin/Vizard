@@ -34,12 +34,15 @@ class GraphViewModel : BaseVisualizerViewModel() {
 
     private val _interactionMode = MutableStateFlow(InteractionMode.PAN_ZOOM)
     val interactionMode: StateFlow<InteractionMode> = _interactionMode.asStateFlow()
-    
+
     private val _pythonCode = MutableStateFlow("")
     val pythonCode: StateFlow<String> = _pythonCode.asStateFlow()
 
     private val _highlightedCodeLines = MutableStateFlow<Set<Int>>(emptySet())
     val highlightedCodeLines: StateFlow<Set<Int>> = _highlightedCodeLines.asStateFlow()
+
+    private val _traversalResult = MutableStateFlow<List<String>>(emptyList())
+    val traversalResult: StateFlow<List<String>> = _traversalResult.asStateFlow()
 
     override suspend fun onOperation(operationName: String, vararg params: Any): OperationResult {
         return try {
@@ -114,7 +117,7 @@ class GraphViewModel : BaseVisualizerViewModel() {
 
             _highlightedCodeLines.value = setOf(2, 3) // queue, visited
             delay(500)
-            
+
             queue.add(startNodeId)
             visited.add(startNodeId)
             setNodeState(startNodeId, GraphNodeState.IN_QUEUE)
@@ -125,6 +128,7 @@ class GraphViewModel : BaseVisualizerViewModel() {
             delay(500)
             while (queue.isNotEmpty()) {
                 val currentId = queue.removeFirst()
+                _traversalResult.update { it + currentId }
                 setNodeState(currentId, GraphNodeState.CURRENT)
                 _highlightedCodeLines.value = setOf(9) // queue.pop
                 delay(700)
@@ -168,6 +172,7 @@ class GraphViewModel : BaseVisualizerViewModel() {
 
     private suspend fun dfsRecursiveWithAnimation(nodeId: String, visited: MutableSet<String>) {
         visited.add(nodeId)
+        _traversalResult.update { it + nodeId }
         setNodeState(nodeId, GraphNodeState.CURRENT)
         _highlightedCodeLines.value = setOf(5, 6) // visited.add, set state
         delay(700)
@@ -175,7 +180,7 @@ class GraphViewModel : BaseVisualizerViewModel() {
         _highlightedCodeLines.value = setOf(8) // for neighbor
         delay(500)
         _adjacencyList.value[nodeId]?.forEach { neighborId ->
-             _highlightedCodeLines.value = setOf(9) // if neighbor not visited
+            _highlightedCodeLines.value = setOf(9) // if neighbor not visited
             delay(500)
             if (neighborId !in visited) {
                 setNodeState(neighborId, GraphNodeState.IN_QUEUE)
@@ -210,8 +215,9 @@ class GraphViewModel : BaseVisualizerViewModel() {
         selectedNodeId = null
         _nodeStates.value = emptyMap()
         _highlightedCodeLines.value = emptySet()
+        _traversalResult.value = emptyList()
     }
-    
+
     private fun setupSampleGraph() {
         viewModelScope.launch {
             resetGraph()
@@ -229,7 +235,7 @@ class GraphViewModel : BaseVisualizerViewModel() {
             _pythonCode.value = generateBfsCode()
         }
     }
-    
+
     private fun generateBfsCode(): String = """
 # Breadth-First Search (BFS)
 def bfs(graph, start_node):
@@ -247,7 +253,7 @@ def bfs(graph, start_node):
             if neighbor not in visited:
                 visited.add(neighbor)
                 queue.append(neighbor)
-    """.trimIndent()
+    """".trimIndent()
 
     private fun generateDfsCode(): String = """
 # Depth-First Search (DFS)
@@ -262,5 +268,5 @@ def _dfs_recursive(graph, node, visited):
     for neighbor in graph[node]:
         if neighbor not in visited:
             _dfs_recursive(graph, neighbor, visited)
-    """.trimIndent()
+    """".trimIndent()
 }
