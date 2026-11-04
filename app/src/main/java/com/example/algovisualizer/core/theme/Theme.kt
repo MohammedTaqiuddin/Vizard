@@ -1,59 +1,75 @@
 package com.example.algovisualizer.core.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-)
+private fun schemeFrom(g: GlassColors) = if (g.isLight) {
+    lightColorScheme(
+        primary = g.accent,
+        onPrimary = g.onAccent,
+        primaryContainer = g.accentSoft,
+        onPrimaryContainer = g.textPrimary,
+        secondary = g.orbSecondary,
+        background = g.base,
+        onBackground = g.textPrimary,
+        surface = g.base,
+        onSurface = g.textPrimary,
+        surfaceVariant = g.fillStrong,
+        onSurfaceVariant = g.textSecondary,
+        outline = g.edgeShadow
+    )
+} else {
+    darkColorScheme(
+        primary = g.accent,
+        onPrimary = g.onAccent,
+        primaryContainer = g.accentSoft,
+        onPrimaryContainer = g.textPrimary,
+        secondary = g.orbSecondary,
+        background = g.base,
+        onBackground = g.textPrimary,
+        surface = g.base,
+        onSurface = g.textPrimary,
+        surfaceVariant = g.fillStrong,
+        onSurfaceVariant = g.textSecondary,
+        outline = g.edgeShadow
+    )
+}
 
 @Composable
 fun AlgoVisualizerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    // Dynamic color is deliberately off: the glass palette is the brand, and wallpaper-derived
+    // colors would fight the ambient orbs the whole design rests on.
+    val glass = if (darkTheme) DarkGlass else LightGlass
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            // Bars stay transparent (edge-to-edge is enabled in MainActivity); only the
+            // icon tint needs to follow the theme.
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalGlass provides glass) {
+        MaterialTheme(
+            colorScheme = schemeFrom(glass),
+            typography = Typography,
+            content = content
+        )
+    }
 }

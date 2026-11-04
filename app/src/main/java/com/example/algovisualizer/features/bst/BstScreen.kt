@@ -7,42 +7,17 @@ import androidx.compose.animation.core.AnimationVector2D
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,9 +37,14 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.algovisualizer.core.theme.LocalGlass
+import com.example.algovisualizer.core.ui.glass.GlassButton
+import com.example.algovisualizer.core.ui.glass.GlassSegmented
+import com.example.algovisualizer.core.ui.glass.GlassTextField
+import com.example.algovisualizer.core.ui.glass.GlassVisualizerScreen
 import kotlinx.coroutines.launch
 
 private fun Color.darker(factor: Float = 0.7f): Color {
@@ -80,170 +60,110 @@ private fun Color.lighter(factor: Float = 1.4f): Color {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BstScreen(
     onBackClick: () -> Unit,
     viewModel: BstViewModel = viewModel()
 ) {
-    var currentView by remember { mutableStateOf("tree") }
     var inputValue by remember { mutableStateOf("") }
     var selectedTraversal by remember { mutableStateOf(TraversalType.IN_ORDER) }
 
+    val glass = LocalGlass.current
     val traversalResult by viewModel.traversalResult.collectAsState()
+    val highlightedLines by viewModel.highlightedCodeLines.collectAsState()
+    val code by viewModel.pythonCode.collectAsState()
+    val inOrder by viewModel.inOrderNodes.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Binary Search Tree") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    GlassVisualizerScreen(
+        title = "Binary Search Tree",
+        subtitle = if (inOrder.isEmpty()) "Insert a value to begin" else "${inOrder.size} nodes",
+        onBack = onBackClick,
+        code = code,
+        highlightedLines = highlightedLines,
+        canvasLabel = "Tree",
+        canvasIcon = Icons.Default.AccountTree,
+        controls = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GlassTextField(
+                    value = inputValue,
+                    onValueChange = { inputValue = it },
+                    label = "Value",
+                    modifier = Modifier.weight(1f)
                 )
-            )
-        },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.AccountTree, contentDescription = "Tree") },
-                    label = { Text("Tree") },
-                    selected = currentView == "tree",
-                    onClick = { currentView = "tree" }
-                )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Code, contentDescription = "Code") },
-                    label = { Text("Code") },
-                    selected = currentView == "code",
-                    onClick = { currentView = "code" }
-                )
-            }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            Box(modifier = Modifier.weight(1f)) {
-                when (currentView) {
-                    "tree" -> BstCanvas(
-                        viewModel = viewModel,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    "code" -> CodePanel(
-                        viewModel = viewModel,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = inputValue,
-                        onValueChange = { inputValue = it },
-                        label = { Text("Enter value") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    Button(onClick = {
+                GlassButton(
+                    text = "Insert",
+                    prominent = true,
+                    enabled = inputValue.toIntOrNull() != null,
+                    onClick = {
                         inputValue.toIntOrNull()?.let {
                             viewModel.insertValue(it)
                             inputValue = ""
                         }
-                    }) {
-                        Text("Insert")
                     }
-                    Button(onClick = {
+                )
+                GlassButton(
+                    text = "Find",
+                    enabled = inputValue.toIntOrNull() != null,
+                    onClick = { inputValue.toIntOrNull()?.let { viewModel.searchValue(it) } }
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            GlassSegmented(
+                options = listOf("In-order", "Pre-order", "Post-order"),
+                selectedIndex = TraversalType.entries.indexOf(selectedTraversal),
+                onSelect = { index ->
+                    selectedTraversal = TraversalType.entries[index]
+                    viewModel.startTraversal(selectedTraversal)
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (traversalResult.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = traversalResult,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    color = glass.accent,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                GlassButton(
+                    text = "Delete",
+                    enabled = inputValue.toIntOrNull() != null,
+                    onClick = {
                         inputValue.toIntOrNull()?.let {
-                            viewModel.searchValue(it)
+                            viewModel.deleteValue(it)
+                            inputValue = ""
                         }
-                    }) {
-                        Text("Search")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text("Traversal Type:")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    TraversalType.values().forEach { traversalType ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable {
-                                selectedTraversal = traversalType
-                                viewModel.startTraversal(traversalType)
-                            }
-                        ) {
-                            RadioButton(
-                                selected = selectedTraversal == traversalType,
-                                onClick = {
-                                    selectedTraversal = traversalType
-                                    viewModel.startTraversal(traversalType)
-                                }
-                            )
-                            Text(
-                                traversalType.name.replace('_', ' ')
-                                    .lowercase()
-                                    .replaceFirstChar { it.titlecase() }
-                            )
-                        }
-                    }
-                }
-
-                if (traversalResult.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Output: $traversalResult",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // --- MODIFIED SECTION: Delete and Clear buttons in a Row ---
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            inputValue.toIntOrNull()?.let {
-                                viewModel.deleteValue(it)
-                                inputValue = ""
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Delete Node")
-                    }
-
-                    Button(
-                        onClick = { viewModel.clearTree() },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Clear Tree")
-                    }
-                }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                GlassButton(
+                    text = "Clear tree",
+                    enabled = inOrder.isNotEmpty(),
+                    onClick = { viewModel.clearTree() },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
+    ) {
+        BstCanvas(viewModel = viewModel, modifier = Modifier.fillMaxSize())
     }
 }
 
@@ -284,8 +204,12 @@ fun BstCanvas(
             val ySpacing = 300f
 
             inOrderNodes.forEachIndexed { index, node ->
+                // inOrderNodes arrives from an async combine, so for one frame after a
+                // delete it can still hold a value this tree no longer contains. `!!` threw
+                // there; skipping just drops the node for that single frame.
+                val depth = depths[node.value] ?: return@forEachIndexed
                 val x = (index + 1) * nodeWidth
-                val y = (depths[node.value]!! + 1) * ySpacing
+                val y = (depth + 1) * ySpacing
                 coords[node.value] = NodeCoordinates(x, y)
             }
         }
@@ -473,58 +397,4 @@ private fun DrawScope.drawBstTree(
 private fun getContrastingTextColor(backgroundColor: Color): Color {
     val luminance = (0.299 * backgroundColor.red + 0.587 * backgroundColor.green + 0.114 * backgroundColor.blue)
     return if (luminance > 0.5) Color.Black else Color.White
-}
-
-@Composable
-fun CodePanel(
-    viewModel: BstViewModel,
-    modifier: Modifier = Modifier
-) {
-    val pythonCode by viewModel.pythonCode.collectAsState()
-    val highlightedLines by viewModel.highlightedCodeLines.collectAsState()
-
-    // Remember the code split into lines to avoid recalculating on each recomposition
-    val codeLines = remember(pythonCode) { pythonCode.lines() }
-
-    val lazyListState = rememberLazyListState()
-    val horizontalScrollState = rememberScrollState()
-
-    // This effect will run whenever the highlighted lines change, causing the list to scroll
-    LaunchedEffect(highlightedLines) {
-        highlightedLines.firstOrNull()?.let { firstLine ->
-            if (firstLine > 0) {
-                // Scroll to the item, adjusting for 0-based index and screen layout
-                val targetIndex = (firstLine - 1).coerceAtLeast(0)
-                lazyListState.animateScrollToItem(index = targetIndex)
-            }
-        }
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(8.dp) // Reduced padding for better fit
-            .horizontalScroll(horizontalScrollState) // Allow horizontal scrolling for long lines
-    ) {
-        LazyColumn(state = lazyListState) {
-            itemsIndexed(codeLines) { index, line ->
-                // Line numbers are 1-based, index is 0-based
-                val isHighlighted = (index + 1) in highlightedLines
-
-                Text(
-                    text = if (line.isEmpty()) " " else line, // Render empty lines with a space
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            if (isHighlighted) MaterialTheme.colorScheme.tertiaryContainer
-                            else Color.Transparent
-                        )
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
-                    softWrap = false // Prevent lines from wrapping
-                )
-            }
-        }
-    }
 }

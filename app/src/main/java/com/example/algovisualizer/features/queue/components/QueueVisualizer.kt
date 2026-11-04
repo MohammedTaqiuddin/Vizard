@@ -10,6 +10,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.toArgb
+import com.example.algovisualizer.core.theme.LocalGlass
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +45,7 @@ private data class FallingNode(
 fun QueueVisualizer(viewModel: QueueViewModel) {
     val queue by viewModel.queue.collectAsState()
     val nodeStates by viewModel.nodeStates.collectAsState()
+    val glass = LocalGlass.current
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val nodeWidth: Float
@@ -139,7 +142,7 @@ fun QueueVisualizer(viewModel: QueueViewModel) {
             AndroidPaint().apply {
                 isAntiAlias = true
                 this.textSize = textSize
-                color = android.graphics.Color.WHITE
+                color = glass.onNode.toArgb()
                 textAlign = AndroidPaint.Align.CENTER
             }
         }
@@ -151,8 +154,8 @@ fun QueueVisualizer(viewModel: QueueViewModel) {
                 val offsetX = animatedOffsets[node.id]?.value
                 if (offsetX != null) {
                     val nodeColor = when (nodeStates[node.id]) {
-                        NodeState.ENQUEUED -> Color.Green
-                        else -> Color.Blue
+                        NodeState.ENQUEUED -> glass.nodeFound
+                        else -> glass.nodeIdle
                     }
                     drawRoundRect(
                         color = nodeColor,
@@ -181,7 +184,7 @@ fun QueueVisualizer(viewModel: QueueViewModel) {
                 }
 
                 drawRoundRect(
-                    color = Color.Red.copy(alpha = currentAlpha),
+                    color = glass.nodeComparing.copy(alpha = currentAlpha),
                     topLeft = Offset(offsetX - nodeWidth / 2, fallingY - nodeHeight / 2),
                     size = Size(nodeWidth, nodeHeight),
                     cornerRadius = CornerRadius(cornerRadius)

@@ -1,20 +1,22 @@
 package com.example.algovisualizer.features.subcategory
 
-
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.algovisualizer.core.data.FeatureInfo
 import com.example.algovisualizer.core.navigation.FeatureRegistry
+import com.example.algovisualizer.core.ui.accentForFeature
+import com.example.algovisualizer.core.ui.glass.GlassHeader
+import com.example.algovisualizer.core.ui.glass.GlassListCard
+import com.example.algovisualizer.core.ui.iconForFeature
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubCategoryScreen(
     subCategoryId: String,
@@ -24,78 +26,27 @@ fun SubCategoryScreen(
     val subCategory = FeatureRegistry.getSubCategoryById(subCategoryId)
     val features = FeatureRegistry.getFeaturesBySubCategory(subCategoryId)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(subCategory?.name ?: "Features") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
+    Column(modifier = Modifier.fillMaxSize()) {
+        GlassHeader(
+            title = subCategory?.name ?: "Features",
+            subtitle = subCategory?.description,
+            onBack = onBackClick
+        )
+
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
+                .navigationBarsPadding(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            subCategory?.let {
-                Text(
-                    text = it.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            }
-
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(features) { feature ->
-                    FeatureCard(
-                        feature = feature,
-                        onClick = { onFeatureClick(feature) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun FeatureCard(
-    feature: FeatureInfo,
-    onClick: () -> Unit
-) {
-    ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Column {
-                Text(
-                    text = feature.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = feature.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            items(features) { feature ->
+                GlassListCard(
+                    title = feature.name,
+                    subtitle = feature.description,
+                    leading = iconForFeature(feature.id),
+                    accent = accentForFeature(feature.id),
+                    onClick = { onFeatureClick(feature) }
                 )
             }
         }

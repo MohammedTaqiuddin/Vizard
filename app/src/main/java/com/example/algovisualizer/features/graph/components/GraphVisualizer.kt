@@ -7,6 +7,8 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.toArgb
+import com.example.algovisualizer.core.theme.LocalGlass
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +41,7 @@ fun GraphVisualizer(
     val nodeStates by viewModel.nodeStates.collectAsState()
     val currentMode by viewModel.interactionMode.collectAsState()
     val scope = rememberCoroutineScope()
+    val glass = LocalGlass.current
 
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -94,7 +97,7 @@ fun GraphVisualizer(
                 val toNode = nodes[edge.to]
                 if (fromNode != null && toNode != null) {
                     drawLine(
-                        color = Color.Gray,
+                        color = glass.edge,
                         start = fromNode.offset,
                         end = toNode.offset,
                         strokeWidth = 2.dp.toPx()
@@ -105,12 +108,12 @@ fun GraphVisualizer(
             // 2. Draw nodes
             nodes.values.forEach { node ->
                 val nodeColor = when (nodeStates[node.id]) {
-                    GraphNodeState.VISITED -> Color.LightGray
-                    GraphNodeState.IN_QUEUE -> Color.Yellow
-                    GraphNodeState.CURRENT -> Color.Magenta
-                    GraphNodeState.PATH -> Color.Green
-                    GraphNodeState.SELECTED -> Color.Red // Highlight for selection
-                    else -> Color.Blue
+                    GraphNodeState.VISITED -> glass.nodeVisited
+                    GraphNodeState.IN_QUEUE -> glass.nodeQueued
+                    GraphNodeState.CURRENT -> glass.nodeComparing
+                    GraphNodeState.PATH -> glass.nodeFound
+                    GraphNodeState.SELECTED -> glass.accent
+                    else -> glass.nodeIdle
                 }
 
                 drawCircle(
@@ -123,7 +126,7 @@ fun GraphVisualizer(
                     val paint = Paint().asFrameworkPaint().apply {
                         isAntiAlias = true
                         textSize = 18.dp.toPx()
-                        color = android.graphics.Color.WHITE
+                        color = glass.onNode.toArgb()
                         textAlign = android.graphics.Paint.Align.CENTER
                     }
                     it.nativeCanvas.drawText(

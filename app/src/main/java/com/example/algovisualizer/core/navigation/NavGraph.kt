@@ -1,13 +1,16 @@
 package com.example.algovisualizer.core.navigation
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.example.algovisualizer.core.theme.LocalGlass
+import com.example.algovisualizer.core.ui.glass.GlassHeader
+import com.example.algovisualizer.core.ui.glass.GlassSurface
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -18,17 +21,17 @@ import com.example.algovisualizer.core.data.FeatureCategory
 import com.example.algovisualizer.features.avl.AvlScreen
 import com.example.algovisualizer.features.bst.BstScreen
 import com.example.algovisualizer.features.category.CategoryScreen
-import com.example.algovisualizer.features.doublylinkedlist.DoublyLinkedListScreen
 import com.example.algovisualizer.features.graph.GraphScreen
 import com.example.algovisualizer.features.graph.TraversalAlgorithm
 import com.example.algovisualizer.features.heap.HeapScreen
 import com.example.algovisualizer.features.heap.HeapType
 import com.example.algovisualizer.features.heap.HeapViewModel
 import com.example.algovisualizer.features.heap.HeapViewModelFactory
+import com.example.algovisualizer.features.linkedlist.core.ListKind
+import com.example.algovisualizer.features.linkedlist.ui.LinkedListScreen
 import com.example.algovisualizer.features.home.HomeScreen
 import com.example.algovisualizer.features.queue.QueueScreen
 import com.example.algovisualizer.features.queue.QueueViewModel
-import com.example.algovisualizer.features.singlylinkedlist.LinkedListScreen
 import com.example.algovisualizer.features.subcategory.SubCategoryScreen
 import com.example.algovisualizer.features.welcome.WelcomeScreen
 
@@ -104,20 +107,17 @@ fun NavGraph(
             )
         }
 
+        // One screen serves every list kind; the entry point just picks the starting kind.
         composable(Screen.SinglyLinkedList.route) {
-            LinkedListScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            LinkedListScreen(ListKind.SINGLY, onBackClick = { navController.popBackStack() })
         }
 
         composable(Screen.DoublyLinkedList.route) {
-            DoublyLinkedListScreen(
-                onBackClick = { navController.popBackStack() }
-            )
+            LinkedListScreen(ListKind.DOUBLY, onBackClick = { navController.popBackStack() })
         }
 
         composable(Screen.CircularLinkedList.route) {
-            PlaceholderScreen("Circular Linked List", onBackClick = { navController.popBackStack() })
+            LinkedListScreen(ListKind.CIRCULAR_SINGLY, onBackClick = { navController.popBackStack() })
         }
 
         composable(Screen.Queue.route) {
@@ -174,35 +174,38 @@ fun NavGraph(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaceholderScreen(
     title: String,
     onBackClick: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    val glass = LocalGlass.current
+    Column(modifier = Modifier.fillMaxSize()) {
+        GlassHeader(title = title, onBack = onBackClick)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(32.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "$title\nComing Soon!",
-                style = MaterialTheme.typography.headlineMedium,
-                textAlign = TextAlign.Center
-            )
+            GlassSurface {
+                Column(
+                    modifier = Modifier.padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Coming soon",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = glass.textPrimary
+                    )
+                    Text(
+                        text = "$title isn't built yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = glass.textTertiary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }
