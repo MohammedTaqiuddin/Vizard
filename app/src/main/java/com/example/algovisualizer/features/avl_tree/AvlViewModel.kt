@@ -136,11 +136,16 @@ class AvlViewModel : BaseVisualizerViewModel() {
     // MODIFIED: Added cancellation of insertionProcessorJob
     fun clearTree() {
         animationJob?.cancel()
-        insertionProcessorJob?.cancel() // Clear insertion queue processing
+        // Drain anything still queued, then restart the consumer. Cancelling it without
+        // restarting left insertValue() posting into a channel nobody was reading, so every
+        // later insert vanished silently until the screen was recreated.
+        insertionProcessorJob?.cancel()
+        while (insertionQueue.tryReceive().isSuccess) { /* discard */ }
         _root.value = null
         _nodeStates.value = emptyMap()
         _traversalResult.value = ""
         _highlightedCodeLines.value = emptySet()
+        startInsertionProcessor()
     }
 
     fun startTraversal(type: TraversalType) {
@@ -342,40 +347,35 @@ class AvlViewModel : BaseVisualizerViewModel() {
                 return current.right
             }
             val smallestValue = findSmallestValue(current.right!!)
-            // Create a new node instance to prevent mutation issues with composable states
+            // New instance so Compose sees a changed tree rather than a mutated one.
             val newNode = current.copy(value = smallestValue)
+            newNode.left = current.left
             newNode.right = deleteRec(current.right, smallestValue)
-            return newNode
+            // Falls through to rebalance: returning here left the subtree unbalanced and
+            // its height/balance labels stale, which is the one thing an AVL view must show.
+            return rebalance(newNode)
         }
 
-        if (current != null) {
-            current.height = 1 + max(getHeight(current.left), getHeight(current.right))
-            current.balance = getBalance(current) // UPDATED
-            val balance = getBalance(current)
+        return rebalance(current)
+    }
 
-            // LL
-            if (balance > 1 && getBalance(current.left) >= 0) {
-                return rightRotate(current)
-            }
+    /** Update height and balance, then apply whichever rotation the balance factor calls for. */
+    private fun rebalance(node: AvlNode): AvlNode {
+        node.height = 1 + max(getHeight(node.left), getHeight(node.right))
+        node.balance = getBalance(node)
+        val balance = node.balance
 
-            // LR
-            if (balance > 1 && getBalance(current.left) < 0) {
-                current.left = leftRotate(current.left)
-                return rightRotate(current)
-            }
-
-            // RR
-            if (balance < -1 && getBalance(current.right) <= 0) {
-                return leftRotate(current)
-            }
-
-            // RL
-            if (balance < -1 && getBalance(current.right) > 0) {
-                current.right = rightRotate(current.right)
-                return leftRotate(current)
-            }
+        if (balance > 1 && getBalance(node.left) >= 0) return rightRotate(node)!!
+        if (balance > 1) {
+            node.left = leftRotate(node.left)
+            return rightRotate(node)!!
         }
-        return current
+        if (balance < -1 && getBalance(node.right) <= 0) return leftRotate(node)!!
+        if (balance < -1) {
+            node.right = rightRotate(node.right)
+            return leftRotate(node)!!
+        }
+        return node
     }
 
     private fun findSmallestValue(root: AvlNode): Int {

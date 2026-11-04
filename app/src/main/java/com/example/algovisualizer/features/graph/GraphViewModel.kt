@@ -35,9 +35,6 @@ class GraphViewModel : BaseVisualizerViewModel() {
     private val _interactionMode = MutableStateFlow(InteractionMode.PAN_ZOOM)
     val interactionMode: StateFlow<InteractionMode> = _interactionMode.asStateFlow()
     
-    private val _pythonCode = MutableStateFlow("")
-    val pythonCode: StateFlow<String> = _pythonCode.asStateFlow()
-
     private val _highlightedCodeLines = MutableStateFlow<Set<Int>>(emptySet())
     val highlightedCodeLines: StateFlow<Set<Int>> = _highlightedCodeLines.asStateFlow()
 
@@ -103,7 +100,6 @@ class GraphViewModel : BaseVisualizerViewModel() {
 
     private fun startBfs(startNodeId: String) {
         animationJob?.cancel()
-        _pythonCode.value = generateBfsCode()
         animationJob = viewModelScope.launch {
             resetGraphVisuals()
             delay(300)
@@ -152,7 +148,6 @@ class GraphViewModel : BaseVisualizerViewModel() {
 
     private fun startDfs(startNodeId: String) {
         animationJob?.cancel()
-        _pythonCode.value = generateDfsCode()
         animationJob = viewModelScope.launch {
             resetGraphVisuals()
             delay(300)
@@ -226,11 +221,10 @@ class GraphViewModel : BaseVisualizerViewModel() {
             addEdge("C", "D")
             addEdge("D", "E")
             // Set initial code to BFS as a default
-            _pythonCode.value = generateBfsCode()
-        }
+            }
     }
     
-    private fun generateBfsCode(): String = """
+    fun generateBfsCode(): String = """
 # Breadth-First Search (BFS)
 def bfs(graph, start_node):
     queue = []
@@ -249,7 +243,7 @@ def bfs(graph, start_node):
                 queue.append(neighbor)
     """.trimIndent()
 
-    private fun generateDfsCode(): String = """
+    fun generateDfsCode(): String = """
 # Depth-First Search (DFS)
 def dfs(graph, start_node):
     visited = set()
